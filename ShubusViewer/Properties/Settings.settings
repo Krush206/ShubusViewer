@@ -71,5 +71,8 @@
     <Setting Name="searchQueryGoogle" Type="System.String" Scope="User">
       <Value Profile="(Default)">https://www.google.com/search?q=</Value>
     </Setting>
+    <Setting Name="linuxGamePlayer" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
   </Settings>
 </SettingsFile>

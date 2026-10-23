@@ -16,7 +16,122 @@ namespace ShubusViewer
             this.textBox1.Clear();
             this.textBox1.TextChanged += this.textBox1_TextChanged;
             this.webBrowser1.Visible = true;
+            this.updateUnixWebFallback();
         }
+
+        #region Unix fallbacks
+        // On Unix the IE-based WebBrowser control is not rendered by Mono, so
+        // pictures are drawn in a PictureBox and games are shown as a notice
+        // (they are played by the external browser, see Platform.cs).
+        private PictureBox unixPictureBox = null;
+        private Label unixGameLabel = null;
+
+        private PictureBox getUnixPictureBox()
+        {
+            if (this.unixPictureBox == null)
+            {
+                this.unixPictureBox = new PictureBox();
+                this.unixPictureBox.BackColor = Color.FromArgb(105, 105, 105); // as the Windows HTML page
+                this.unixPictureBox.SizeMode = PictureBoxSizeMode.Zoom;
+                this.unixPictureBox.Visible = false;
+                this.Controls.Add(this.unixPictureBox);
+                this.subscribeUnixOverlaySync();
+            }
+            return this.unixPictureBox;
+        }
+
+        private Label getUnixGameLabel()
+        {
+            if (this.unixGameLabel == null)
+            {
+                this.unixGameLabel = new Label();
+                this.unixGameLabel.BackColor = Color.Black;
+                this.unixGameLabel.ForeColor = Color.White;
+                this.unixGameLabel.TextAlign = ContentAlignment.MiddleCenter;
+                this.unixGameLabel.Visible = false;
+                this.Controls.Add(this.unixGameLabel);
+                this.subscribeUnixOverlaySync();
+            }
+            return this.unixGameLabel;
+        }
+
+        private bool unixOverlaySynced = false;
+
+        private void subscribeUnixOverlaySync()
+        {
+            if (this.unixOverlaySynced) return;
+            this.unixOverlaySynced = true;
+            this.webBrowser1.LocationChanged += (s, e) => this.syncUnixOverlayBounds();
+            this.webBrowser1.SizeChanged += (s, e) => this.syncUnixOverlayBounds();
+        }
+
+        private void syncUnixOverlayBounds()
+        {
+            if (this.unixPictureBox != null && this.unixPictureBox.Visible)
+                this.unixPictureBox.Bounds = this.webBrowser1.Bounds;
+            if (this.unixGameLabel != null && this.unixGameLabel.Visible)
+                this.unixGameLabel.Bounds = this.webBrowser1.Bounds;
+        }
+
+        private void updateUnixWebFallback()
+        {
+            if (ExtendedData.Platform.IsUnix == false) return;
+
+            if (this.webBrowser1.Visible == false)
+            {
+                this.hideUnixOverlays();
+                return;
+            }
+
+            if (this.mySharedData.fileType == TypeFileFormat.EWebPicture)
+            {
+                PictureBox pb = this.getUnixPictureBox();
+                this.hideUnixOverlays();
+                pb.Bounds = this.webBrowser1.Bounds;
+                pb.Visible = true;
+                pb.BringToFront();
+                this.loadUnixPicture(pb);
+            }
+            else if (this.mySharedData.fileType == TypeFileFormat.EWebGame)
+            {
+                Label lb = this.getUnixGameLabel();
+                lb.Text = "This game is played by the external browser.\n\n"
+                    + "On Linux the Unity Web Player / Flash / Shockwave plugins are\n"
+                    + "hosted by Pipelight (see README-LINUX.md):\n"
+                    + "    pipelight-plugin --enable unity3d\n\n"
+                    + "The launcher page has been opened in your browser.";
+                this.hideUnixOverlays();
+                lb.Bounds = this.webBrowser1.Bounds;
+                lb.Visible = true;
+                lb.BringToFront();
+            }
+            else
+            {
+                this.hideUnixOverlays();
+            }
+        }
+
+        private void hideUnixOverlays()
+        {
+            if (this.unixPictureBox != null) this.unixPictureBox.Visible = false;
+            if (this.unixGameLabel != null) this.unixGameLabel.Visible = false;
+        }
+
+        private void loadUnixPicture(PictureBox pb)
+        {
+            Image img = null;
+
+            try
+            {
+                img = Image.FromFile(this.mySharedData.basicInfo.curFile);
+            }
+            catch (Exception) { }
+
+            Image old = pb.Image;
+            pb.Image = img;
+            if (old != null) old.Dispose();
+        }
+        #endregion // Unix fallbacks
 
         private void WebBrowserClosePage1()
         {
@@ -160,6 +275,7 @@ namespace ShubusViewer
                 this.textBox1.KeyPress += this.textBox1_KeyPress;
                 this.KeyDown += this.Form1_KeyDown;
             }
+            this.updateUnixWebFallback();
         }
 
         private void webBrowser1_PreviewKeyDown1(object sender, PreviewKeyDownEventArgs e)

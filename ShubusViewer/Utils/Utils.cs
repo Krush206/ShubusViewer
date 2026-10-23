@@ -25,11 +25,18 @@ namespace Utils
 
         public static string getShortName(string path)
         {
-            return Regex.Match(path, "(?=\\\\([^\\\\]+)$)").Groups[1].Value;
+            // Handles both Windows and Unix separators.
+            int idx = path.LastIndexOfAny(new char[] { '\\', '/' });
+            return (idx >= 0) ? path.Substring(idx + 1) : path;
         }
 
         public static string getPath(string path)
         {
+            if (ExtendedData.Platform.IsUnix)
+            {
+                int idx = path.LastIndexOfAny(new char[] { '\\', '/' });
+                return (idx > 0) ? path.Substring(0, idx) : path;
+            }
             return Regex.Match(path, "^([\\w]:.*)[\\\\]([^\\\\]+)$").Groups[1].Value;
         }
 
@@ -185,8 +192,10 @@ namespace Utils
                     // The following code will return the path to the user.config file. You need to add a reference to System.Configuration.dll
                     // Configuration config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.PerUserRoamingAndLocal);
 
-                    string sc = "\\Shubus_Corporation\\ShubusViewer";
-                    _cfgPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + sc;
+                    // Path.Combine keeps the Windows layout and is correct on Unix.
+                    _cfgPath = System.IO.Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)
+                        , "Shubus_Corporation", "ShubusViewer");
 
                     try
                     {
@@ -203,6 +212,30 @@ namespace Utils
 
         public static void ShowHelp()
         {
+            if (ExtendedData.Platform.IsUnix)
+            {
+                // The Windows CHM help file has no reader on Unix; point to the
+                // Linux guide shipped with the sources instead.
+                try
+                {
+                    string exeDir = System.IO.Path.GetDirectoryName(
+                        System.Windows.Forms.Application.ExecutablePath);
+                    string doc = System.IO.Path.Combine(exeDir ?? ".", "README-LINUX.md");
+
+                    if (System.IO.File.Exists(doc))
+                    {
+                        ExtendedData.Platform.OpenWithSystemDefault(doc);
+                        return;
+                    }
+                }
+                catch (Exception) { }
+
+                MessageBox.Show("On Linux see README-LINUX.md next to the application."
+                    , ExtendedData.Constants.STR_APP_TITLE
+                    , MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
             string chmName = "ShubusViewer.chm";
             string exePath = System.Windows.Forms.Application.ExecutablePath;
             string chmPath = exePath.Substring(0, exePath.LastIndexOf('\\') + 1) + chmName;

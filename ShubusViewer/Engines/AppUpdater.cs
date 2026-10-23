@@ -44,7 +44,19 @@ namespace ShubusViewer
         public void CheckForNewVersion()
         {
             string marker = "version=\"";
-            string strInfo = this.getHtmlPageText();
+            string strInfo;
+
+            try
+            {
+                strInfo = this.getHtmlPageText();
+            }
+            catch (Exception)
+            {
+                MessageBox.Show("Update server is not reachable."
+                    , Constants.STR_APP_TITLE,
+                   MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
 
             int start = strInfo.IndexOf(marker) + marker.Length;
 

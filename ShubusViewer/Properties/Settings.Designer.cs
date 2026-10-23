@@ -298,5 +298,17 @@ namespace ShubusViewer.Properties {
                 this["searchQueryGoogle"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string linuxGamePlayer {
+            get {
+                return ((string)(this["linuxGamePlayer"]));
+            }
+            set {
+                this["linuxGamePlayer"] = value;
+            }
+        }
     }
 }

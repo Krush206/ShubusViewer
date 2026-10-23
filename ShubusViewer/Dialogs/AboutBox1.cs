@@ -45,7 +45,11 @@ namespace ShubusViewer
 
         void textBox1_GotFocus(object sender, EventArgs e)
         {
-            HideCaret(textBox1.Handle);
+            try
+            {
+                HideCaret(textBox1.Handle); // No user32.dll on Unix.
+            }
+            catch (Exception) { }
         }
 
         private void button1_Click(object sender, EventArgs e)

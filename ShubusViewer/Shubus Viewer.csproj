@@ -68,6 +68,7 @@
     </Compile>
     <Compile Include="Components\SettingsProvider.cs" />
     <Compile Include="Components\TextProcessor.cs" />
+    <Compile Include="Utils\Platform.cs" />
     <Compile Include="Dialogs\DlgFirstTime.cs">
       <SubType>Form</SubType>
     </Compile>

@@ -55,6 +55,17 @@ namespace WebDataProcessor
           , ECortona3D
         };
 
+        // Used on Unix only: the NPAPI counterpart of the Windows ActiveX page.
+        private const string flashScript =
+              "<object type=\"application/x-shockwave-flash\" data=\"MultimediaFile\" width=\"100%\" height=\"100%\">\r\n"
+            + "<param name=\"movie\" value=\"MultimediaFile\" />\r\n"
+            + "<param name=\"quality\" value=\"high\" />\r\n"
+            + "<param name=\"wmode\" value=\"opaque\" />\r\n"
+            + "<param name=\"bgcolor\" value=\"#000000\" />\r\n"
+            + "</object>\r\n";
+
+        byte[] flashBytes;
+
         public AppWebModel(AppExtendedData aData)
         {
             this.mySharedData = aData;
@@ -94,6 +105,13 @@ namespace WebDataProcessor
 
             if (File.Exists(path) == false)
                 throw new FileNotFoundException(path + Constants.STR_FILENOTEXISTS_MSG);
+
+            if (ExtendedData.Platform.IsUnix)
+            {
+                this.openFileUnix(path);
+                this.ch = true;
+                return;
+            }
 
             TypeContent type = this.getContentType(path);
 
@@ -144,11 +162,109 @@ namespace WebDataProcessor
             this.ch = true;
         }
 
+        // Unix/Linux implementation. The IE-based WebBrowser control and its
+        // ActiveX plugins (Unity Web Player, Shockwave) do not exist here, so:
+        //  - pictures are drawn by the host form in a PictureBox;
+        //  - documents (HTML/MHT) are opened by the system default handler;
+        //  - game files are packaged into a launcher page (the same templates as
+        //    on Windows) and opened in the system browser, where Pipelight
+        //    hosts the corresponding Windows plugin under Wine.
+        private void openFileUnix(string path)
+        {
+            string ext = Path.GetExtension(path).ToLower();
+
+            if (this.getContentType(path) == TypeContent.EPicture)
+            {
+                return; // The host form draws it in the fallback PictureBox.
+            }
+
+            if (ext == ".swf" || ext == ".unity3d" || ext == ".dcr"
+                || ext == ".wrl" || ext == ".wrz")
+            {
+                string page;
+
+                if (ext == ".swf")
+                {
+                    if (this.flashBytes == null)
+                        this.flashBytes = System.Text.ASCIIEncoding.UTF8.GetBytes(flashScript);
+
+                    page = System.Text.ASCIIEncoding.UTF8.GetString(this.flashBytes);
+                }
+                else if (ext == ".unity3d")
+                {
+                    if (this.unityBytes == null)
+                        this.unityBytes = System.Convert.FromBase64String(unityScript);
+
+                    page = System.Text.ASCIIEncoding.UTF8.GetString(this.unityBytes);
+                }
+                else if (ext == ".dcr")
+                {
+                    if (this.dcrBytes == null)
+                        this.dcrBytes = System.Convert.FromBase64String(dcrScript);
+
+                    page = System.Text.ASCIIEncoding.UTF8.GetString(this.dcrBytes);
+                    page = page.Replace(swVersion, this.mySharedData.swPlayerVersion);
+                }
+                else // Cortona3D (.wrl / .wrz).
+                {
+                    if (this.wrlzBytes == null)
+                        this.wrlzBytes = System.Convert.FromBase64String(wrlzScript);
+
+                    page = System.Text.ASCIIEncoding.UTF8.GetString(this.wrlzBytes);
+                }
+
+                this.showInExternalBrowser(path, page);
+                return;
+            }
+
+            ExtendedData.Platform.OpenWithSystemDefault(path);
+        }
+
+        // Writes/deploys the launcher page for a multimedia file and opens it with the
+        // configured external player (see Platform.OpenGamePage). The page is served
+        // by the embedded loopback server so that plugins rejecting file:// content
+        // (e.g. the Unity Web Player) behave exactly like on a game site.
+        private void showInExternalBrowser(string mediaPath, string page)
+        {
+            string dataUrl = ExtendedData.Platform.CreateGameEntry(mediaPath);
+            string pageUrl = null;
+
+            if (dataUrl != null)
+            {
+                // "MultimediaFile" is the placeholder in all page templates; the
+                // Unity template also references the data file in its <embed> tag.
+                page = page.Replace(replaceFile, dataUrl).Replace("MyDataFile.unity3d", dataUrl);
+                pageUrl = ExtendedData.Platform.FinishGamePage(page);
+            }
+
+            if (pageUrl == null)
+            {
+                // Fallback: write the page to disk and reference the file directly.
+                string url = new Uri(mediaPath).AbsoluteUri;
+                page = page.Replace(replaceFile, url).Replace("MyDataFile.unity3d", url);
+
+                string pagePath = Path.Combine(ExtendedData.Platform.MultimediaDir
+                    , Path.GetFileNameWithoutExtension(mediaPath) + ".html");
+                File.WriteAllText(pagePath, page, System.Text.Encoding.UTF8);
+                pageUrl = pagePath;
+            }
+
+            if (Path.GetExtension(mediaPath).ToLower() == ".unity3d")
+                ExtendedData.Platform.CheckUnity3DPluginHint();
+
+            ExtendedData.Platform.OpenGamePage(pageUrl);
+        }
+
         private bool stateClosing = false;
 
         public void closePage()
         {
             if (this.stateClosing) return;
+            if (ExtendedData.Platform.IsUnix)
+            {
+                // Nothing was ever loaded into the (non-rendering) in-app browser.
+                return;
+            }
 
             this.webBrowser.DocumentCompleted += this.webBrowser_DocumentCompleted;
             this.webBrowser.Navigated += this.webBrowser_Navigated;

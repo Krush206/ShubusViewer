@@ -250,7 +250,7 @@ namespace ShubusViewer
         {
             get
             {
-                return UserConfigDir + "\\user.config";
+                return System.IO.Path.Combine(UserConfigDir, "user.config");
             }
         }
 
@@ -258,9 +258,10 @@ namespace ShubusViewer
         {
             get
             {
-                string sc = "\\Shubus_Corporation\\ShubusViewer";
-                string path = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + sc;
-                return path;
+                // Path.Combine keeps the Windows layout and is correct on Unix.
+                return System.IO.Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)
+                    , "Shubus_Corporation", "ShubusViewer");
             }
         }
 

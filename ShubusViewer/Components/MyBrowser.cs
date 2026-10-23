@@ -178,7 +178,15 @@ namespace ZoomBrowser
             object nativeActiveXObject)
         {
             base.AttachInterfaces(nativeActiveXObject);
-            this.axIWebBrowser2 = (IWebBrowser2)nativeActiveXObject;
+            try
+            {
+                // Fails on Unix where no ActiveX host exists.
+                this.axIWebBrowser2 = (IWebBrowser2)nativeActiveXObject;
+            }
+            catch (Exception)
+            {
+                this.axIWebBrowser2 = null;
+            }
         }
 
         protected override void DetachInterfaces()

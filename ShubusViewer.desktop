@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Shubus Viewer
+GenericName=Text and multimedia viewer
+Comment=View texts, pictures, HTML and play Unity3D/Flash/Shockwave games
+Exec=mono /opt/ShubusViewer-master/ShubusViewer/bin/Release/ShubusViewer.exe %f
+Path=/opt/ShubusViewer-master/ShubusViewer/bin/Release
+Icon=text-editor
+Terminal=false
+Categories=Utility;Viewer;
+MimeType=text/html;image/png;image/jpeg;image/gif;image/bmp;

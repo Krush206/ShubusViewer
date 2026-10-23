@@ -420,6 +420,19 @@ namespace ShubusViewer // BackColor = Gainsboro
                         this.myViewManager.setMode(ViewManager.EViewMode.EModeTextPresent, !b);
                         this.textModeUpdate();
                     }
+                    else if (ExtendedData.Platform.IsUnix
+                        && (mySharedData.fileType == TypeFileFormat.EWebPicture
+                            || mySharedData.fileType == TypeFileFormat.EWebGame)
+                        && this.myViewManager.getMode(ViewManager.EViewMode.EModeBrowser)
+                            == ViewManager.EViewMode.EModeNone)
+                    {
+                        // On Unix there is no IE DocumentCompleted event, so the
+                        // switch into browser mode is done explicitly here.
+                        this.myViewManager.setMode(ViewManager.EViewMode.EModeBrowser, true);
+                    }
+
+                    if (ExtendedData.Platform.IsUnix)
+                        this.updateUnixWebFallback();
                     break;
 
                 case TypeNotification.ERemoveFromRecentList:
@@ -806,7 +819,8 @@ namespace ShubusViewer // BackColor = Gainsboro
             // RichTextBox rises this event when font changed.
             this.textBox1.TextChanged -= this.textBox1_TextChanged;
 
-            if (ps.myFontSize == 0)
+            // The EULA dialog is not required on Unix - skip it there.
+            if (ps.myFontSize == 0 && ExtendedData.Platform.IsUnix == false)
             {
                 try
                 {
@@ -2034,6 +2048,22 @@ namespace ShubusViewer // BackColor = Gainsboro
 
             this.updateIfRecent();
 
+            if (ExtendedData.Platform.IsUnix)
+            {
+                try
+                {
+                    this.hostsName = "/etc/hosts";
+                    this.myController.setFileName(this.hostsName);
+                    this.myController.processOperation(TypeAction.EOpen);
+                }
+                catch (Exception)
+                {
+                    MessageBox.Show(Constants.STR_UNKNOWN, Constants.STR_APP_TITLE
+                        , MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+                return;
+            }
+
             try
             {
                 regkey = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(hostsPathRegKey);
@@ -2124,6 +2154,7 @@ namespace ShubusViewer // BackColor = Gainsboro
 
         private void Form1_Resize(object sender, EventArgs e)
         {
+	    try {
             bool winStateChanged = this.currWinState != WindowState;
             bool isMaximized = WindowState == FormWindowState.Maximized;
             this.currWinState = WindowState;
@@ -2136,6 +2167,9 @@ namespace ShubusViewer // BackColor = Gainsboro
             {
                this.myController.processOperation(TypeAction.EUpdateCaption);
             }
+	    } catch(NullReferenceException) {
+		    ;
+	    }
         }
 
         private void textBox2_KeyDown(object sender, KeyEventArgs e)
